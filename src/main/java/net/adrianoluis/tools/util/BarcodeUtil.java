@@ -24,7 +24,7 @@ public final class BarcodeUtil {
         return null != code && code.replaceAll("[^0-9]", "").length() == 44;
     }
 
-    public static boolean isValidTypefulLine(final String code) {
+    public static boolean isValidTypedLine(final String code) {
         return null != code && (
                 code.matches("^([0-9]{5})(\\.)?([0-9]{5})(\\s)?([0-9]{5})(\\.)?([0-9]{6})(\\s)?([0-9]{5})(\\.)?([0-9]{6})(\\s)?([0-9]{1})(\\s)?([0-9]{14})$") ||
                         code.matches("^([0-9]{11})(-)?([0-9])(\\s)?([0-9]{11})(-)?([0-9])(\\s)?([0-9]{11})(-)?([0-9])(\\s)?([0-9]{11})(-)?([0-9])$"));
@@ -52,25 +52,25 @@ public final class BarcodeUtil {
     /**
      * Check if the provided number is a valid "Convênio" number.
      *
-     * @param typefulLine Tipeful Line to extract
+     * @param typedLine Tipeful Line to extract
      * @return <number>true</number> if is a valid string, <number>false</number> otherwise
      */
-    public static boolean isValidContractDocument(String typefulLine) {
-        typefulLine = typefulLine.replaceAll("[^0-9]", "").trim();
+    public static boolean isValidContractDocument(String typedLine) {
+        typedLine = typedLine.replaceAll("[^0-9]", "").trim();
 
-        if (!isValidTypefulLine(typefulLine) && typefulLine.length() != 48) {
+        if (!isValidTypedLine(typedLine) && typedLine.length() != 48) {
             return false;
         }
 
-        final String codeBlock1 = typefulLine.substring(0, 11);
-        final String codeBlock2 = typefulLine.substring(12, 23);
-        final String codeBlock3 = typefulLine.substring(24, 35);
-        final String codeBlock4 = typefulLine.substring(36, 47);
+        final String codeBlock1 = typedLine.substring(0, 11);
+        final String codeBlock2 = typedLine.substring(12, 23);
+        final String codeBlock3 = typedLine.substring(24, 35);
+        final String codeBlock4 = typedLine.substring(36, 47);
 
-        final String validationDigit1 = typefulLine.substring(11, 12);
-        final String validationDigit2 = typefulLine.substring(23, 24);
-        final String validationDigit3 = typefulLine.substring(35, 36);
-        final String validationDigit4 = typefulLine.substring(47);
+        final String validationDigit1 = typedLine.substring(11, 12);
+        final String validationDigit2 = typedLine.substring(23, 24);
+        final String validationDigit3 = typedLine.substring(35, 36);
+        final String validationDigit4 = typedLine.substring(47);
 
         return mod10(codeBlock1).equals(validationDigit1) && mod10(codeBlock2).equals(validationDigit2) &&
                 mod10(codeBlock3).equals(validationDigit3) && mod10(codeBlock4).equals(validationDigit4);
@@ -82,7 +82,7 @@ public final class BarcodeUtil {
      * @param barcode Barcode string
      * @return A well formatted version of the barcode given
      */
-    public static String toTypefulLine(String barcode) {
+    public static String toTypedLine(String barcode) {
         barcode = barcode.replaceAll("[^0-9]", "").trim();
 
         if (!isValidBarcode(barcode)) {
@@ -90,7 +90,7 @@ public final class BarcodeUtil {
         }
 
         if (isValidDocketDocument(barcode)) {
-            final String codeBlock1 = barcode.substring(0, 4) + barcode.substring(19, 20);
+            final String codeBlock1 = barcode.substring(0, 4) + barcode.charAt(19);
             final String codeBlock2 = barcode.substring(20, 24);
             final String codeBlock3 = barcode.substring(24, 29);
             final String codeBlock4 = barcode.substring(29, 34);
@@ -127,33 +127,33 @@ public final class BarcodeUtil {
     /**
      * Try to parse the "Linha Digitável" to a barcode
      *
-     * @param typefulLine "Linha Digitável" string
+     * @param typedLine "Linha Digitável" string
      * @return Corresponding barcode
      */
-    public static String toBarcode(String typefulLine) {
-        typefulLine = typefulLine.replaceAll("[^0-9]", "").trim();
+    public static String toBarcode(String typedLine) {
+        typedLine = typedLine.replaceAll("[^0-9]", "").trim();
 
-        if (!isValidTypefulLine(typefulLine)) {
-            return typefulLine;
+        if (!isValidTypedLine(typedLine)) {
+            return typedLine;
         }
 
-        if (isValidContractDocument(typefulLine)) {
-            return typefulLine.substring(0, 11) +
-                    typefulLine.substring(12, 23) +
-                    typefulLine.substring(24, 35) +
-                    typefulLine.substring(36, 47);
+        if (isValidContractDocument(typedLine)) {
+            return typedLine.substring(0, 11) +
+                    typedLine.substring(12, 23) +
+                    typedLine.substring(24, 35) +
+                    typedLine.substring(36, 47);
         } else {
-            String code = typefulLine.substring(0, 4) +
-                    typefulLine.substring(32, 47) +
-                    typefulLine.substring(4, 9) +
-                    typefulLine.substring(10, 20) +
-                    typefulLine.substring(21, 31);
+            String code = typedLine.substring(0, 4) +
+                    typedLine.substring(32, 47) +
+                    typedLine.substring(4, 9) +
+                    typedLine.substring(10, 20) +
+                    typedLine.substring(21, 31);
 
             final String realCode = code.substring(0, 4) + code.substring(5);
             final String validationDigit = code.substring(4, 5);
 
             if (!mod11(realCode).equals(validationDigit)) {
-                code = typefulLine;
+                code = typedLine;
             }
 
             return code;
@@ -164,7 +164,7 @@ public final class BarcodeUtil {
     /**
      * Returns the expiration date of a "Boleto" document.
      *
-     * @param code Typeful Line or Barcode to extract
+     * @param code Typed Line or Barcode to extract
      * @return a {@link java.util.Date} representing the expiration date
      */
     public static LocalDate expiresAt(String code) {
@@ -182,7 +182,7 @@ public final class BarcodeUtil {
     /**
      * Returns the document value to be paid
      *
-     * @param code Typeful Line or Barcode to extract
+     * @param code Typed Line or Barcode to extract
      * @return the document value as double
      */
     public static double documentValue(String code) {
