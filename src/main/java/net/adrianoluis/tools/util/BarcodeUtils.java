@@ -3,45 +3,50 @@ package net.adrianoluis.tools.util;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.LocalDate;
 
+import static net.adrianoluis.tools.util.ModuloUtils.mod10;
+import static net.adrianoluis.tools.util.ModuloUtils.mod11;
+import static net.adrianoluis.tools.util.NumberUtils.digitsLength;
+import static net.adrianoluis.tools.util.NumberUtils.toDigits;
+
 /**
  * This class validate a barcode and convert it to "Linha Digitável".
  *
  * @author adriano
  * @since Set 25, 2014
  */
-public final class BarcodeUtil {
+public final class BarcodeUtils {
 
-    private BarcodeUtil() {
+    private BarcodeUtils() {
     }
 
     /**
      * Check if a barcode string is of type ITF.
      *
      * @param code Barcode string
-     * @return <number>true</number> if is a valid string, <number>false</number> otherwise
+     * @return <code>true</code> if is a valid string, <code>false</code> otherwise
      */
     public static boolean isValidBarcode(final String code) {
-        return null != code && code.replaceAll("[^0-9]", "").length() == 44;
+        return null != code && digitsLength(code) == 44;
     }
 
     public static boolean isValidTypedLine(final String code) {
         return null != code && (
-                code.matches("^([0-9]{5})(\\.)?([0-9]{5})(\\s)?([0-9]{5})(\\.)?([0-9]{6})(\\s)?([0-9]{5})(\\.)?([0-9]{6})(\\s)?([0-9]{1})(\\s)?([0-9]{14})$") ||
+                code.matches("^([0-9]{5})(\\.)?([0-9]{5})(\\s)?([0-9]{5})(\\.)?([0-9]{6})(\\s)?([0-9]{5})(\\.)?([0-9]{6})(\\s)?([0-9])(\\s)?([0-9]{14})$") ||
                         code.matches("^([0-9]{11})(-)?([0-9])(\\s)?([0-9]{11})(-)?([0-9])(\\s)?([0-9]{11})(-)?([0-9])(\\s)?([0-9]{11})(-)?([0-9])$"));
     }
 
     /**
      * Check if the provided number is a valid "Boleto" number.
      *
-     * @param code Tipeful Line or Barcode to extract
-     * @return <number>true</number> if is a valid string, <number>false</number> otherwise
+     * @param code Typed Line or Barcode to extract
+     * @return <code>true</code> if is a valid string, <code>false</code> otherwise
      */
     public static boolean isValidDocketDocument(String code) {
-        code = code.replaceAll("[^0-9]", "").trim();
-
-        if (!isValidBarcode(code)) {
-            code = toBarcode(code);
+        if (!isValidTypedLine(code) && !isValidBarcode(code)) {
+            return false;
         }
+
+        code = toDigits(code);
 
         final String realCode = code.substring(0, 4) + code.substring(5);
         final String validationDigit = code.substring(4, 5);
@@ -52,15 +57,15 @@ public final class BarcodeUtil {
     /**
      * Check if the provided number is a valid "Convênio" number.
      *
-     * @param typedLine Tipeful Line to extract
-     * @return <number>true</number> if is a valid string, <number>false</number> otherwise
+     * @param typedLine Typed Line to extract
+     * @return <code>true</code> if is a valid string, <code>false</code> otherwise
      */
     public static boolean isValidContractDocument(String typedLine) {
-        typedLine = typedLine.replaceAll("[^0-9]", "").trim();
-
-        if (!isValidTypedLine(typedLine) && typedLine.length() != 48) {
+        if (!isValidTypedLine(typedLine) && (null == typedLine || typedLine.length() != 48)) {
             return false;
         }
+
+        typedLine = toDigits(typedLine);
 
         final String codeBlock1 = typedLine.substring(0, 11);
         final String codeBlock2 = typedLine.substring(12, 23);
@@ -83,7 +88,12 @@ public final class BarcodeUtil {
      * @return A well formatted version of the barcode given
      */
     public static String toTypedLine(String barcode) {
-        barcode = barcode.replaceAll("[^0-9]", "").trim();
+        if (null == barcode || barcode.trim().isEmpty()) {
+            return barcode;
+        }
+
+        // extract only numbers
+        barcode = toDigits(barcode);
 
         if (!isValidBarcode(barcode)) {
             return barcode;
@@ -131,11 +141,11 @@ public final class BarcodeUtil {
      * @return Corresponding barcode
      */
     public static String toBarcode(String typedLine) {
-        typedLine = typedLine.replaceAll("[^0-9]", "").trim();
-
         if (!isValidTypedLine(typedLine)) {
             return typedLine;
         }
+
+        typedLine = toDigits(typedLine);
 
         if (isValidContractDocument(typedLine)) {
             return typedLine.substring(0, 11) +
@@ -202,67 +212,4 @@ public final class BarcodeUtil {
 
         return value;
     }
-
-    public static String mod10(String number) {
-        // XXX important to reverse the string
-        number = new StringBuffer(number).reverse().toString();
-
-        int sum = 0;
-        int weight = 2;
-        int plus;
-
-        for (char c : number.toCharArray()) {
-            plus = Character.getNumericValue(c) * weight;
-
-            if (plus >= 10) {
-                plus = (plus - 10) + 1;
-            }
-
-            sum += plus;
-
-            if (weight == 2) {
-                weight = 1;
-            } else {
-                weight = 2;
-            }
-
-        }
-
-        int digit = 10 - (sum % 10);
-
-        if (digit == 10) {
-            digit = 0;
-        }
-
-        return String.valueOf(digit);
-    }
-
-    public static String mod11(String number) {
-        // XXX important to reverse the string
-        number = new StringBuffer(number).reverse().toString();
-
-        int sum = 0;
-        int weight = 2;
-        int base = 9;
-
-        for (char c : number.toCharArray()) {
-            sum += Character.getNumericValue(c) * weight;
-
-            if (weight < base) {
-                weight++;
-            } else {
-                weight = 2;
-            }
-
-        }
-
-        int digit = 11 - (sum % 11);
-
-        if (digit == 0 || digit > base) {
-            digit = 1;
-        }
-
-        return String.valueOf(digit);
-    }
-
 }
